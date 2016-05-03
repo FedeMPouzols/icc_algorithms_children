@@ -109,7 +109,7 @@ loadAlg.initialize();
 Workspace_sptr ws = loadAlg.getProperty("OutputWorkspace");
 auto peakWS =
      boost::dynamic_pointer_cast<Mantid::DataObjects::PeaksWorkspace>(ws);
-``
+```
 
 Outside of algorithms: logging will be hidden, but you still need to name the output workspaces.
 (trick: "__" prefix).
