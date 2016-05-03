@@ -42,7 +42,7 @@ Other pages:
 - [Multithreading](http://www.mantidproject.org/Multithreading_in_Mantid_Algorithms)
 ---
 
-1. The many ways
+## The many ways
 
 Algorithm / IAlgorithm / AlgorithmManager / AlgorithmProxy?
 
@@ -63,13 +63,13 @@ Algorithm / IAlgorithm / AlgorithmManager / AlgorithmProxy?
 
 ---
 
-1. The more many ways
+## The more many ways
 
 IAlgorithm::execute()
 IAlgorithm::executeAsChildAlg()
 
 ---
-1. Create Unmanaged
+## Create Unmanaged
 
 AlgorithmManager::create(const std::string &algName, const int &version = -1, bool makeProxy = true)
 AlgorithmManager::createUnmanaged(const std::string &algName, const int &version = -1) const;
@@ -83,7 +83,7 @@ alg_crop = AlgorithmManager.createUnmanaged("CropWorkspace")
 
 ---
 
-1. Consequences
+## Consequences
 
 
 Managed algorithms have a non-zero ID. Unamanged algorithms have ID=0
@@ -92,7 +92,7 @@ Managed algorithms have a non-zero ID. Unamanged algorithms have ID=0
 
 ---
 
-1. More consequences
+## More consequences
 
 ```cpp
 alg->setPropertyValue("OutputWorkspace", "dummy");
@@ -117,7 +117,7 @@ Outside of algorithms: logging will be hidden, but you still need to name the ou
 
 ---
 
-1. Using algorithms in unit tests and custom interfaces
+## Using algorithms in unit tests and custom interfaces
 
 
 
@@ -127,27 +127,27 @@ Outside of algorithms: logging will be hidden, but you still need to name the ou
 
 ---
 
-1. Uses
+## Uses
 
 If you run an alg using the "simple API", it is definitely not a child
 
 ---
 
-1. Consequences: progress
+## Consequences: progress
 
 IAlgorithm::setChildStartProgress() / setChildEndProgress()
 
 
 ---
 
-1. Problems?
+## Problems?
 
 
 When the output workspace is a `WorkspaceGroup` you'll need to give it a name.
 
 
 ---
-1. Internals:
+## Internals:
 
 /** Do we ALWAYS store in the AnalysisDataService? This is set to true
  * for python algorithms' child algorithms
@@ -161,7 +161,7 @@ void Algorithm::setAlwaysStoreInADS(const bool doStore) {
 
 
 ---
-1. Internals - logging
+## Internals - logging
 
 In `Algorithm::execute()` you'll find:
 
@@ -187,13 +187,13 @@ Python algorithms => m_alwaysStoreInADS==true
 (Note there is: IAlgorithm::setLogging() / isLogging())
 
 ---
-1. Internals
+## Internals
 
 child: relevant for initialization
 
 
 ---
-1. Internals
+## Internals
 
 
 IAlgorithm::setAlwaysStoreInADS()
