@@ -23,7 +23,13 @@ class: center, middle
 
 
 training course(s)  *** TODO ***
+
 - [Extending Mantid with Python](http://www.mantidproject.org/Extending_Mantid_With_Python)
+
+(From algorithms, run other algorithm through the "simple API":
+` Load(...) `
+)
+
 
 
 - [Writing an algorithm (C++)[http://www.mantidproject.org/Writing_an_Algorithm]
@@ -65,11 +71,45 @@ Algorithm / IAlgorithm / AlgorithmManager / AlgorithmProxy?
 
 ## The more many ways
 
-IAlgorithm::execute()
-IAlgorithm::executeAsChildAlg()
+- `IAlgorithm::execute()`
+
+- `IAlgorithm::executeAsChildAlg()`
+
+- `IAlgorithm::setChild()`
+
+```cpp
+    SaveNexusProcessed alg;
+    alg.setRethrows(true);
+    alg.setChild(true);
+    alg.initialize();
+    alg.setProperty("Filename", output_filename);
+    // ... alg.setProperty("InputWorkspace", group_ws);
+    alg.execute();
+    // ...
+```
+
+---
+## More ways to execute an algorithm
+
+- `AlgorithmProxy::executeAsync()`
+
+- You can also (ab)use `Algorithm::fromString()`
+  (example in [AlgorithmTest.h](https://))
+
+  Meant to de-serialize algorithm objects, but has been seen used as an
+  alternative "create".
+
 
 ---
 ## Create Unmanaged
+
+
+- `AlgorithmManager::createUnmanaged()`
+
+- What is an "unmanaged" algorithm:
+  [`AlgorithmManager::createUnmanaged()`](https://github.com/mantidproject/mantid/blob/master/Framework/API/inc/MantidAPI/AlgorithmManager.h#L62-L64)
+
+- Used ~221 times, ~50 times in unit tests, sometimes in system tests.
 
 AlgorithmManager::create(const std::string &algName, const int &version = -1, bool makeProxy = true)
 AlgorithmManager::createUnmanaged(const std::string &algName, const int &version = -1) const;
@@ -78,6 +118,20 @@ AlgorithmManager::createUnmanaged(const std::string &algName, const int &version
 From scripts/SANS/isis_reduction_steps.py
 ```python
 alg_crop = AlgorithmManager.createUnmanaged("CropWorkspace")
+```
+
+
+---
+
+## Managed/Unmanaged/Child/Parent?
+
+
+```cpp
+  /** To set whether algorithm is a child.
+   *  @param isChild :: True - the algorithm is a child algorithm.  False - this
+   * is a full managed algorithm.
+   */
+  virtual void setChild(const bool isChild) = 0;
 ```
 
 
@@ -144,6 +198,14 @@ IAlgorithm::setChildStartProgress() / setChildEndProgress()
 
 
 When the output workspace is a `WorkspaceGroup` you'll need to give it a name.
+
+
+--
+## Workspaces
+
+- `ScopedWorkspace`: "hidden" name generated with a random sequence number. Used in:
+  - Some 6 `Algorithms` and `DataHandling` tests (SaveNexusProcessedTest, LoadMuonNexus1Test, RebinTest, ChangeTimeZeroTest, etc.)
+  - Muons: MuonAnalysis interface, PlotAsymmetryByLogValue algorithm
 
 
 ---
