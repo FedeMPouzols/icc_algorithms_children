@@ -1,8 +1,8 @@
 class: center, middle
 
-# Algorithms, children
+# Algorithms and their children
 
-(When, how, why, and what will happen?)
+(What happens when you run an algorithm as child, unmanaged, etc.?)
 
 
 ---
@@ -15,11 +15,12 @@ class: center, middle
 
 * Wiki / doxygen / sources
   - Overall description?
-  - Misleading issues (workspace groups)
+  - Misleading issues (workspace groups, `Python != cpp`)
 
 ---
 
 ## Understanding algorithms
+
 
 
 training course(s)  *** TODO ***
@@ -48,10 +49,29 @@ Other pages:
 - [Multithreading](http://www.mantidproject.org/Multithreading_in_Mantid_Algorithms)
 ---
 
-## The many ways
+## Running an algorithm is straightforward.
+
+- `IAlgorithm::execute()`
+
+- Creating / running as child (from [Writing an algorithm (C++)[http://www.mantidproject.org/Writing_an_Algorithm]):
+
+```
+Mantid::API::Algorithm_sptr childAlg = createChildAlgorithm("AlgorithmName");
+
+childAlg->setPropertyValue("number", 0);
+hildAlg->setProperty<Workspace_sptr>("Workspace",workspacePointer);
+childAlg->execute();
+```
+
+- But also: create / setChild
+
+- But, what is different in child algorithms?
+
+--
+
+- The many ways
 
 Algorithm / IAlgorithm / AlgorithmManager / AlgorithmProxy?
-
 
 
 ```cpp
@@ -99,6 +119,13 @@ Algorithm / IAlgorithm / AlgorithmManager / AlgorithmProxy?
   Meant to de-serialize algorithm objects, but has been seen used as an
   alternative "create".
 
+- And if you're a `DataProcessorAlgorithm`:
+
+```cpp
+boost::shared_ptr<Algorithm> DataProcessorAlgorithm::createChildAlgorithm(
+    const std::string &name, const double startProgress,
+    const double endProgress, const bool enableLogging, const int &version)
+```
 
 ---
 ## Create Unmanaged
@@ -120,6 +147,30 @@ From scripts/SANS/isis_reduction_steps.py
 alg_crop = AlgorithmManager.createUnmanaged("CropWorkspace")
 ```
 
+- **All child algorithms are
+    [unmanaged](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L751-L761)**
+
+---
+
+## What is different in child algorithms?
+
+- How output workspaces are produced by / can be retrieved from the algorithm
+
+- Logging
+
+- History in workspaces
+
+- Progress bar/report
+
+All this can be controlled with [this method of Algorithm]():
+
+```cpp
+virtual boost::shared_ptr<Algorithm> createChildAlgorithm(
+    const std::string &name, const double startProgress = -1.,
+    const double endProgress = -1., const bool enableLogging = true,
+    const int &version = -1);
+```
+ + `void enableHistoryRecordingForChild(const bool on)`
 
 ---
 
@@ -192,6 +243,26 @@ If you run an alg using the "simple API", it is definitely not a child
 IAlgorithm::setChildStartProgress() / setChildEndProgress()
 
 
+
+---
+
+## Consequences: history
+
+
+- By default children are not included in the workspace history
+
+- Can use `IAlgorithm::enableHistoryRecordingForChild(bool)` to change that
+
+- Somewhere in Algorithm.cpp:
+
+```cpp
+bool Algorithm::trackingHistory() {
+  return (!isChild() || m_recordHistoryForChild);
+}
+```
+
+- Enabled in: `DataProcessorAlgorithm` and `Comment`
+
 ---
 
 ## Problems?
@@ -219,8 +290,20 @@ When the output workspace is a `WorkspaceGroup` you'll need to give it a name.
 void Algorithm::setAlwaysStoreInADS(const bool doStore) {
   m_alwaysStoreInADS = doStore;
 }
-      
 
+TODO: link to comment in simpleapi.py
+```python
+    if parent is not None:
+        alg = parent.createChildAlgorithm(name, version)
+        alg.setLogging(parent.isLogging()) # default is to log if parent is logging
+
+        # Historic: simpleapi functions always put stuff in the ADS
+        #           If we change this we culd potentially break many users' algorithms
+        alg.setAlwaysStoreInADS(True)
+```
+
+
+Note: `createChildAlgorithm()` also does `initialize()`.
 
 ---
 ## Internals - logging
@@ -243,16 +326,28 @@ if (!isChild() || m_alwaysStoreInADS)
 
 Python algorithms => m_alwaysStoreInADS==true
 
+- For historic reasons.
+
 - Then what does setChild on a Python algorithm do?
 
 
 (Note there is: IAlgorithm::setLogging() / isLogging())
+
+
+
+Still, in C++,
+
+For `WorkspaceGroup` output properties,
+`[Algorithm::createChildAlgorithm()](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L770-L780)`
+exceptionally uses
+[`Property::createTemporaryValue()`](https://github.com/mantidproject/mantid/blob/master/Framework/Kernel/src/Property.cpp#L148-L155)
 
 ---
 ## Internals
 
 child: relevant for initialization
 
+children: workspaces not locked/unlocked in `Algorithm::execute()`
 
 ---
 ## Internals
