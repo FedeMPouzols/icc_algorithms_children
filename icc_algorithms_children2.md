@@ -17,7 +17,7 @@ class: center, middle
 
 * Wiki / doxygen / sources
   - Overall description?
-  - Misleading issues (`Python != cpp`, workspace groups are an exception)
+  - Misleading issues (`Python != cpp`, workspace groups)
 
 ---
 
@@ -27,11 +27,13 @@ class: center, middle
 
   - [Extending Mantid with Python](http://www.mantidproject.org/Extending_Mantid_With_Python)
 
-  - From algorithms, run other algorithm through the "simple API". Example
-```cpp
-Load(...)
+  - Not much about children. From algorithms, run other algorithms through the "simple API". Example:
+
+```python
+from mantid.simpleapi import Load, Scale, DeleteWorkspace
+
+_tmpws = Load(Filename=self.getPropertyValue("Filename"))
 ```
-(definitely not a child)
 
 - [Writing an algorithm (C++)[http://www.mantidproject.org/Writing_an_Algorithm]
 
@@ -77,14 +79,23 @@ childAlg->execute();
 
 ```cpp
 
-
+Algorithm_sptr alg =
+    AlgorithmManager::Instance().createUnmanaged("DeleteWorkspace");
+alg->initialize();
+alg->setChild(true);
+alg->setProperty("Workspace", tempWs);
+alg->execute();
 ```
 
 ```python
 
+rfi_alg = self.createChildAlgorithm(name='RawFileInfo', enableLogging=False)
+rfi_alg.setProperty('Filename', run_str)
+rfi_alg.execute()
+nperiods = rfi_alg.getProperty('PeriodCount').value
 ```
 
-- `createChildAlgorithm()` initialises the algorithm
+- `createChildAlgorithm()` initializes the algorithm
 
 - `setChild()` does not initialize?
 
@@ -125,8 +136,6 @@ dark_run_ws= alg_crop.getProperty("OutputWorkspace").value
 
 - `IAlgorithm::execute()`
 
-- `IAlgorithm::executeAsChildAlg()`
-
 - `IAlgorithm::setChild()`
 
 ```cpp
@@ -140,9 +149,19 @@ dark_run_ws= alg_crop.getProperty("OutputWorkspace").value
     // ...
 ```
 
+- [IAlgorithm::executeAsChildAlg()](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L670-L687)
+
+```cpp
+IAlgorithm_sptr loadAlg;
+loadAlg = createChildAlgorithm("HFIRLoad", 0.1, 0.3);
+loadAlg->setProperty("Filename", fileName);
+loadAlg->setProperty("ReductionProperties", reductionManagerName);
+loadAlg->executeAsChildAlg();
+```
+
 ---
 
-## Still more ways to execute an algorithm
+## Still more ways of executing an algorithm
 
 - `AlgorithmProxy::executeAsync()`
 
@@ -174,7 +193,8 @@ boost::shared_ptr<Algorithm> DataProcessorAlgorithm::createChildAlgorithm(
 
 - Progress bar/report
 
-All this can be controlled with [this method of Algorithm]():
+All this can be controlled with
+[Algorithm::createChildAlgorithm](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L733-L799):
 
 ```cpp
 virtual boost::shared_ptr<Algorithm> createChildAlgorithm(
@@ -182,7 +202,7 @@ virtual boost::shared_ptr<Algorithm> createChildAlgorithm(
     const double endProgress = -1., const bool enableLogging = true,
     const int &version = -1);
 ```
- - And `void enableHistoryRecordingForChild(const bool on)`
+And `void enableHistoryRecordingForChild(const bool on)`
 
 ---
 
@@ -215,7 +235,7 @@ No need to `setPropertyValue("OutputWorkspace", "dummy")`
 
 ---
 
-## Using child algorithms in unit tests and custom interfaces
+## Using child algorithms in unit tests and custom interfaces?
 
 - Many tests do `setChild(true)`
 
@@ -232,7 +252,7 @@ auto peakWS =
     boost::dynamic_pointer_cast<Mantid::DataObjects::PeaksWorkspace>(ws);
 ```
 
-Outside of algorithms: logging will be hidden?, but you still need to name the output workspaces.
+Outside of algorithms: (some) logging will be hidden?, but you still need to name the output workspaces.
 
 
 - In interfaces you can exploit the "hidden" names trick: "__" prefix.
