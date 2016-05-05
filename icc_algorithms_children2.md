@@ -2,76 +2,77 @@ class: center, middle
 
 # Algorithms and their children
 
-(What happens when you run an algorithm as child, unmanaged, etc.?)
+(What happens when you run an algorithm as child?)
 
 
 ---
 
 ## Questions
 
-* Managed/unmanaged, child:
-  - What is the point?
-  - What are the consequences? (visible and invisible)
+* Mantid: algorithms + workspaces
+
+* Algorithms: managed/unmanaged, child:
+  - What are they?
+  - What are the differences? (visible and invisible)
 
 * Wiki / doxygen / sources
   - Overall description?
-  - Misleading issues (workspace groups, `Python != cpp`)
+  - Misleading issues (`Python != cpp`, workspace groups are an exception)
 
 ---
 
 ## Understanding algorithms
 
+- Training course(s):
 
+  - [Extending Mantid with Python](http://www.mantidproject.org/Extending_Mantid_With_Python)
 
-training course(s)  *** TODO ***
-
-- [Extending Mantid with Python](http://www.mantidproject.org/Extending_Mantid_With_Python)
-
-(From algorithms, run other algorithm through the "simple API":
-` Load(...) `
-)
-
-
+  - From algorithms, run other algorithm through the "simple API". Example
+```cpp
+Load(...)
+```
+(definitely not a child)
 
 - [Writing an algorithm (C++)[http://www.mantidproject.org/Writing_an_Algorithm]
 
 ```cpp
 
-Mantid::API::Algorithm_sptr childAlg = createChildAlgorithm("AlgorithmName");
+Mantid::API::Algorithm_sptr childAlg = createChildAlgorithm("Segfault");
 ```
 
-
-Other pages:
+--
+Additional documentation:
 - [Python vs. C++ algorithms](http://www.mantidproject.org/Python_Vs_C%2B%2B_Algorithms)
 
 - [Usage examples / docs-tests](http://www.mantidproject.org/Algorithm_Usage_Examples)
 
 - [Multithreading](http://www.mantidproject.org/Multithreading_in_Mantid_Algorithms)
+
 ---
 
-## Running an algorithm is straightforward.
+## Running an algorithm
 
 - `IAlgorithm::execute()`
 
-- Creating / running as child (from [Writing an algorithm (C++)[http://www.mantidproject.org/Writing_an_Algorithm]):
+- Creating / running as child (from [Writing an algorithm (C++)](http://www.mantidproject.org/Writing_an_Algorithm):
 
-```
+```cpp
 Mantid::API::Algorithm_sptr childAlg = createChildAlgorithm("AlgorithmName");
 
 childAlg->setPropertyValue("number", 0);
-hildAlg->setProperty<Workspace_sptr>("Workspace",workspacePointer);
+childAlg->setProperty<Workspace_sptr>("Workspace",workspacePointer);
 childAlg->execute();
 ```
 
-- But also: create / setChild
+- But also: `create()` + `setChild(true)`
 
-- But, what is different in child algorithms?
+- And, what is different in child algorithms?
 
---
+---
 
-- The many ways
+## The many ways of creating an algorithm
 
-Algorithm / IAlgorithm / AlgorithmManager / AlgorithmProxy?
+`IAlgorithm` / `Algorithm` /  / `AlgorithmManager` / `AlgorithmProxy`?
 
 
 ```cpp
@@ -83,13 +84,44 @@ Algorithm / IAlgorithm / AlgorithmManager / AlgorithmProxy?
 
 ```
 
-- createChild initialises
-- setChild does not initialize?
+- `createChildAlgorithm()` initialises the algorithm
 
+- `setChild()` does not initialize?
+
+---
+## Create Unmanaged
+
+- [`AlgorithmManager::createUnmanaged()`](https://github.com/mantidproject/mantid/blob/master/Framework/API/inc/MantidAPI/AlgorithmManager.h#L62-L64).
+
+- What is an "unmanaged" algorithm?
+
+- Used ~220 times, ~50 times in unit tests, sometimes in system tests.
+
+```cpp
+AlgorithmManager::create(const std::string &algName, const int &version = -1, bool makeProxy = true)
+
+AlgorithmManager::createUnmanaged(const std::string &algName, const int &version = -1) const;
+```
+
+```python
+cropped_name = dark_run_ws_name + "_cropped"
+alg_crop = AlgorithmManager.createUnmanaged("CropWorkspace")
+alg_crop.initialize()
+alg_crop.setChild(True)
+alg_crop.setProperty("InputWorkspace", dark_run_ws)
+alg_crop.setProperty("OutputWorkspace", cropped_name)
+alg_crop.setProperty("StartWorkspaceIndex", start_ws_index)
+alg_crop.setProperty("EndWorkspaceIndex", end_ws_index)
+alg_crop.execute()
+dark_run_ws= alg_crop.getProperty("OutputWorkspace").value
+```
+
+- **All "createChildAlgorithm()" child algorithms are
+    [unmanaged](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L751-L761)**
 
 ---
 
-## The more many ways
+## The many ways of executing an algorithm
 
 - `IAlgorithm::execute()`
 
@@ -109,15 +141,16 @@ Algorithm / IAlgorithm / AlgorithmManager / AlgorithmProxy?
 ```
 
 ---
-## More ways to execute an algorithm
+
+## Still more ways to execute an algorithm
 
 - `AlgorithmProxy::executeAsync()`
 
 - You can also (ab)use `Algorithm::fromString()`
-  (example in [AlgorithmTest.h](https://))
+  (example in [AlgorithmTest.h](https://github.com/mantidproject/mantid/blob/master/Framework/API/test/AlgorithmTest.h#L316-L320))
 
-  Meant to de-serialize algorithm objects, but has been seen used as an
-  alternative "create".
+  Meant to de-serialize algorithm objects, but in the past it has been
+  seen used as an alternative "create".
 
 - And if you're a `DataProcessorAlgorithm`:
 
@@ -127,28 +160,7 @@ boost::shared_ptr<Algorithm> DataProcessorAlgorithm::createChildAlgorithm(
     const double endProgress, const bool enableLogging, const int &version)
 ```
 
----
-## Create Unmanaged
-
-
-- `AlgorithmManager::createUnmanaged()`
-
-- What is an "unmanaged" algorithm:
-  [`AlgorithmManager::createUnmanaged()`](https://github.com/mantidproject/mantid/blob/master/Framework/API/inc/MantidAPI/AlgorithmManager.h#L62-L64)
-
-- Used ~221 times, ~50 times in unit tests, sometimes in system tests.
-
-AlgorithmManager::create(const std::string &algName, const int &version = -1, bool makeProxy = true)
-AlgorithmManager::createUnmanaged(const std::string &algName, const int &version = -1) const;
-
-
-From scripts/SANS/isis_reduction_steps.py
-```python
-alg_crop = AlgorithmManager.createUnmanaged("CropWorkspace")
-```
-
-- **All child algorithms are
-    [unmanaged](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L751-L761)**
+( = `Algorithm::createChildAlgorithm(...)` + history)
 
 ---
 
@@ -170,84 +182,67 @@ virtual boost::shared_ptr<Algorithm> createChildAlgorithm(
     const double endProgress = -1., const bool enableLogging = true,
     const int &version = -1);
 ```
- + `void enableHistoryRecordingForChild(const bool on)`
+ - And `void enableHistoryRecordingForChild(const bool on)`
 
 ---
 
-## Managed/Unmanaged/Child/Parent?
+## Most important difference
 
+- Child: **Output workspaces [are not put in the ADS (Analysis Data
+  Service)](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L586-L591)**
+
+- In algorithms you can use temporary variables with child algorithms:
 
 ```cpp
-  /** To set whether algorithm is a child.
-   *  @param isChild :: True - the algorithm is a child algorithm.  False - this
-   * is a full managed algorithm.
-   */
-  virtual void setChild(const bool isChild) = 0;
+IAlgorithm_sptr duplicate = createChildAlgorithm("CloneWorkspace");
+duplicate->initialize();
+duplicate->setProperty<Workspace_sptr>(
+    "InputWorkspace", boost::dynamic_pointer_cast<Workspace>(inputWs));
+
+duplicate->execute();
+
+Workspace_sptr temp = duplicate->getProperty("OutputWorkspace");
+MatrixWorkspace_sptr outputWs =
+    boost::dynamic_pointer_cast<MatrixWorkspace>(temp);
 ```
 
+No need to `setPropertyValue("OutputWorkspace", "dummy")`
+
+
+- A feature of (C++) parent/child algorithms that would be useful
+  elsewhere (interfaces, tests, etc.): produce workspaces that are not
+  stored in the ADS.
 
 ---
 
-## Consequences
+## Using child algorithms in unit tests and custom interfaces
 
-
-Managed algorithms have a non-zero ID. Unamanged algorithms have ID=0
-
-[//]: <> (This comes from IAlgorithm.h)
-
----
-
-## More consequences
-
-```cpp
-alg->setPropertyValue("OutputWorkspace", "dummy");
-// ...
-IMDHistoWorkspace_sptr visualHistoWs =
-          alg->getProperty("OutputWorkspace");
-```
+- Many tests do `setChild(true)`
 
 ```cpp
 LoadNexusProcessed loadAlg;
 loadAlg.setChild(true);
 loadAlg.initialize();
-// ...
+loadAlg.setPropertyValue("Filename", "SingleCrystalPeakTable.nxs");
+loadAlg.setPropertyValue("OutputWorkspace", "dummy");
+loadAlg.execute();
+
 Workspace_sptr ws = loadAlg.getProperty("OutputWorkspace");
 auto peakWS =
-     boost::dynamic_pointer_cast<Mantid::DataObjects::PeaksWorkspace>(ws);
+    boost::dynamic_pointer_cast<Mantid::DataObjects::PeaksWorkspace>(ws);
 ```
 
-Outside of algorithms: logging will be hidden, but you still need to name the output workspaces.
-(trick: "__" prefix).
+Outside of algorithms: logging will be hidden?, but you still need to name the output workspaces.
+
+
+- In interfaces you can exploit the "hidden" names trick: "__" prefix.
 
 
 ---
 
-## Using algorithms in unit tests and custom interfaces
+## Other differences: progress and history
 
-
-
-- many tests do `setChild(true)`
-
-
-
----
-
-## Uses
-
-If you run an alg using the "simple API", it is definitely not a child
-
----
-
-## Consequences: progress
-
-IAlgorithm::setChildStartProgress() / setChildEndProgress()
-
-
-
----
-
-## Consequences: history
-
+- Progress: `IAlgorithm::setChildStartProgress()` / `setChildEndProgress()`
 
 - By default children are not included in the workspace history
 
@@ -261,27 +256,16 @@ bool Algorithm::trackingHistory() {
 }
 ```
 
-- Enabled in: `DataProcessorAlgorithm` and `Comment`
-
----
-
-## Problems?
-
-
-When the output workspace is a `WorkspaceGroup` you'll need to give it a name.
-
-
---
-## Workspaces
-
-- `ScopedWorkspace`: "hidden" name generated with a random sequence number. Used in:
-  - Some 6 `Algorithms` and `DataHandling` tests (SaveNexusProcessedTest, LoadMuonNexus1Test, RebinTest, ChangeTimeZeroTest, etc.)
-  - Muons: MuonAnalysis interface, PlotAsymmetryByLogValue algorithm
+- History recording enabled in: `DataProcessorAlgorithm` and `Comment`
 
 
 ---
-## Internals:
+## Problems: Python algorithms behave differently!
 
+- They [always put workspaces in the ADS (with a
+  name)](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L153-L162):
+
+```cpp
 /** Do we ALWAYS store in the AnalysisDataService? This is set to true
  * for python algorithms' child algorithms
  *
@@ -290,8 +274,11 @@ When the output workspace is a `WorkspaceGroup` you'll need to give it a name.
 void Algorithm::setAlwaysStoreInADS(const bool doStore) {
   m_alwaysStoreInADS = doStore;
 }
+```
 
-TODO: link to comment in simpleapi.py
+In [simple
+API](https://github.com/mantidproject/mantid/blob/master/Framework/PythonInterface/mantid/simpleapi.py#L925-L931):
+
 ```python
     if parent is not None:
         alg = parent.createChildAlgorithm(name, version)
@@ -302,8 +289,71 @@ TODO: link to comment in simpleapi.py
         alg.setAlwaysStoreInADS(True)
 ```
 
+--
+- They also log normally. Then what does `setChild()` on a Python algorithm do?
 
-Note: `createChildAlgorithm()` also does `initialize()`.
+
+---
+## Problems? Workspaces, the ADS and names.
+
+- To circumvent issues?
+  [ScopedWorkspace](https://github.com/mantidproject/mantid/blob/master/Framework/API/inc/MantidAPI/ScopedWorkspace.h):
+  "hidden" name ("__" trick) generated with a random sequence
+  number. Used in:
+
+  - Some 6 `Algorithms` and `DataHandling` tests
+    (SaveNexusProcessedTest, LoadMuonNexus1Test, RebinTest,
+    ChangeTimeZeroTest, etc.)
+
+  - Muons: MuonAnalysis interface, PlotAsymmetryByLogValue algorithm
+
+--
+
+- **When the output workspace is a `WorkspaceGroup` you'll need to give it a name**
+
+
+
+
+
+
+---
+
+## Child algorithms that become non-child
+
+In `Algorithm::processGroups()`, [created as child but then deprived
+of its
+childness](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L1244-L1249):
+
+```cpp
+Algorithm_sptr alg_sptr = this->createChildAlgorithm(
+    this->name(), -1, -1, this->isLogging(), this->version());
+// Don't make the new algorithm a child so that it's workspaces are stored
+// correctly
+alg_sptr->setChild(false);
+```
+
+---
+
+
+---
+
+## Internals: Managed/Unmanaged/Child/Parent?
+
+Managed algorithms have a non-zero ID. Unamanged algorithms have ID=0
+
+[//]: <> (This comes from IAlgorithm.h)
+
+
+```cpp
+  /** To set whether algorithm is a child.
+   *  @param isChild :: True - the algorithm is a child algorithm.  False - this
+   * is a full managed algorithm.
+   */
+  virtual void setChild(const bool isChild) = 0;
+```
+
+Children: workspaces not locked/unlocked in `Algorithm::execute()`
+
 
 ---
 ## Internals - logging
@@ -328,46 +378,11 @@ Python algorithms => m_alwaysStoreInADS==true
 
 - For historic reasons.
 
-- Then what does setChild on a Python algorithm do?
-
-
-(Note there is: IAlgorithm::setLogging() / isLogging())
-
-
+- Then what does setChild on a Python algorithm do? (Note: there is IAlgorithm::setLogging() / isLogging())
 
 Still, in C++,
 
 For `WorkspaceGroup` output properties,
-`[Algorithm::createChildAlgorithm()](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L770-L780)`
+[Algorithm::createChildAlgorithm()](https://github.com/mantidproject/mantid/blob/master/Framework/API/src/Algorithm.cpp#L770-L780)
 exceptionally uses
-[`Property::createTemporaryValue()`](https://github.com/mantidproject/mantid/blob/master/Framework/Kernel/src/Property.cpp#L148-L155)
-
----
-## Internals
-
-child: relevant for initialization
-
-children: workspaces not locked/unlocked in `Algorithm::execute()`
-
----
-## Internals
-
-
-IAlgorithm::setAlwaysStoreInADS()
-
-IAlgorithm::setLogging() / isLogging()
-
-
-From Framework/API/test/AlgorithmTest.h:
-
-```cpp
-void testIsChild() {
-  TS_ASSERT_EQUALS(false, alg.isChild());
-  alg.setChild(true);
-  TS_ASSERT_EQUALS(true, alg.isChild());
-  alg.setChild(false);
-  TS_ASSERT_EQUALS(false, alg.isChild());
-}
-                        
-
-```
+[Property::createTemporaryValue()](https://github.com/mantidproject/mantid/blob/master/Framework/Kernel/src/Property.cpp#L148-L155)
