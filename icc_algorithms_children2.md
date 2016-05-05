@@ -290,7 +290,7 @@ API](https://github.com/mantidproject/mantid/blob/master/Framework/PythonInterfa
 ```
 
 --
-- They also log normally. Then what does `setChild()` on a Python algorithm do?
+- Also log normally. Then what does `setChild()` on a Python algorithm do?
 
 
 ---
@@ -314,6 +314,8 @@ API](https://github.com/mantidproject/mantid/blob/master/Framework/PythonInterfa
 
 
 
+---
+
 
 
 ---
@@ -331,8 +333,6 @@ Algorithm_sptr alg_sptr = this->createChildAlgorithm(
 // correctly
 alg_sptr->setChild(false);
 ```
-
----
 
 
 ---
