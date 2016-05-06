@@ -336,6 +336,17 @@ API](https://github.com/mantidproject/mantid/blob/master/Framework/PythonInterfa
 
 ---
 
+## Recap
+
+- Several combinations of `create*()` + `execute*()`
+
+- Unnamed output workspaces only possible in C++ child algorithms
+  (child of an algorithm)
+
+- Python algorithms are discriminated against C++
+
+- Workspace groups also discriminated against other workspace types
+
 
 
 ---
